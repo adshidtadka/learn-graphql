@@ -3,10 +3,6 @@ import { useMutation, gql } from "@apollo/client";
 import { GET_MY_TODOS } from "./TodoPrivateList";
 
 const TodoItem = ({ index, todo }) => {
-  const removeTodo = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
   const TOGGLE_TODO = gql`
     mutation toggleTodo($id: Int!, $isCompleted: Boolean!) {
       update_todos(
@@ -17,7 +13,6 @@ const TodoItem = ({ index, todo }) => {
       }
     }
   `;
-
   const [toggleTodoMutation] = useMutation(TOGGLE_TODO);
   const toggleTodo = () => {
     toggleTodoMutation({
@@ -36,6 +31,35 @@ const TodoItem = ({ index, todo }) => {
             return t;
           }
         });
+        cache.writeQuery({
+          query: GET_MY_TODOS,
+          data: { todos: newTodos },
+        });
+      },
+    });
+  };
+
+  const REMOVE_TODO = gql`
+    mutation removeTodo($id: Int!) {
+      delete_todos(where: { id: { _eq: $id } }) {
+        affected_rows
+      }
+    }
+  `;
+  const [removeTodoMutation] = useMutation(REMOVE_TODO);
+  const removeTodo = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    removeTodoMutation({
+      variables: { id: todo.id },
+      optimisticResponse: {
+        delete_todos: {
+          affected_rows: 1,
+        },
+      },
+      update: (cache) => {
+        const existingTodos = cache.readQuery({ query: GET_MY_TODOS });
+        const newTodos = existingTodos.todos.filter((t) => t.id !== todo.id);
         cache.writeQuery({
           query: GET_MY_TODOS,
           data: { todos: newTodos },
