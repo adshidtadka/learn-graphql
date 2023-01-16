@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 
 import Header from "./Header";
@@ -6,6 +6,8 @@ import Login from "./Auth/Login";
 import TodoPrivateWrapper from "./Todo/TodoPrivateWrapper";
 import TodoPublicWrapper from "./Todo/TodoPublicWrapper";
 import OnlineUsersWrapper from "./OnlineUsers/OnlineUsersWrapper";
+
+import useAccessToken from "../hooks/useAccessToken";
 
 import {
   ApolloClient,
@@ -26,11 +28,17 @@ const createApolloClient = (authToken) => {
   });
 };
 
-import useAccessToken from "../hooks/useAccessToken";
-
 const App = () => {
   const idToken = useAccessToken();
   const { loading, logout } = useAuth0();
+
+  const [client, setClient] = useState(createApolloClient(idToken));
+
+  useEffect(() => {
+    if (!loading && idToken) {
+      setClient(createApolloClient(idToken));
+    }
+  }, [loading, idToken]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -40,7 +48,9 @@ const App = () => {
     return <Login />;
   }
 
-  const [client] = useState(createApolloClient(idToken));
+  if (!client) {
+    return <div>Error...</div>;
+  }
 
   return (
     <ApolloProvider client={client}>
